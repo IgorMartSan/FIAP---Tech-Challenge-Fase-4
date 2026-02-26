@@ -29,3 +29,15 @@
 - [ ] Incluir exemplos de chamadas à API (input/output esperado)
 - [ ] Documentar etapas do pipeline de Machine Learning
 - [ ] Consolidar entregáveis: repositório GitHub, documentação, link da API e vídeo (até 5 min)
+
+
+
+
+
+Neste link temos mais informações da Passos Mágicos, sugiro ver o relatório de atividades: https://passosmagicos.org.br/impacto-e-transparencia/
+
+Os relatórios de atividades que mencionei, para facilitar 😛:
+2023: https://passosmagicos.org.br/wp-content/uploads/2024/04/relatorio_de_atividades_passosmagicos_2023_compressed.pdf
+2022: https://passosmagicos.org.br/wp-content/uploads/2023/04/relatorio_de_atividades_2022_passosmagicos_compressed.pdf
+2021: https://passosmagicos.org.br/wp-content/uploads/2022/06/Relatorio-de-Atividades-2021-4_compressed.pdf
+2020: https://passosmagicos.org.br/wp-content/uploads/2021/08/Relatorio_atividades_2020.pdf
