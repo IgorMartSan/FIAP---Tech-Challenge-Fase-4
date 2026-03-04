@@ -64,3 +64,39 @@ Abrir no Jupyter:
 ```bash
 jupyter notebook pipeline_ml/notebooks/dev_pipeline.ipynb
 ```
+
+## Treinamento do modelo (requisito do Datathon)
+
+Objetivo de negócio (conforme PDF):
+- prever risco de defasagem escolar.
+
+Biblioteca de ML utilizada:
+- `scikit-learn`.
+
+Modelo escolhido:
+- `RandomForestClassifier` com `class_weight="balanced"`.
+
+Alvo de treino:
+- `RISCO_DEFASAGEM` (derivado de `Defasagem`):
+  - `1` se `Defasagem < 0` (com risco);
+  - `0` caso contrário.
+
+Base usada:
+- `pipeline_ml/outputs/dados_feature_engineering_consolidado.csv`
+  (gerada por `pipeline_ml/dev_pipeline.py`).
+
+Script de treino:
+- `pipeline_ml/ca_train/train_model.py`
+
+Saídas do treino:
+- Modelo serializado: `pipeline_ml/outputs/modelo_risco_defasagem.joblib`
+- Métricas: `pipeline_ml/outputs/metricas_risco_defasagem.json`
+
+Execução:
+
+```bash
+python3 pipeline_ml/ca_train/train_model.py
+```
+
+
+

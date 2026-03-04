@@ -34,6 +34,7 @@
 
 
 
+
 Neste link temos mais informações da Passos Mágicos, sugiro ver o relatório de atividades: https://passosmagicos.org.br/impacto-e-transparencia/
 
 Os relatórios de atividades que mencionei, para facilitar 😛:
@@ -41,3 +42,9 @@ Os relatórios de atividades que mencionei, para facilitar 😛:
 2022: https://passosmagicos.org.br/wp-content/uploads/2023/04/relatorio_de_atividades_2022_passosmagicos_compressed.pdf
 2021: https://passosmagicos.org.br/wp-content/uploads/2022/06/Relatorio-de-Atividades-2021-4_compressed.pdf
 2020: https://passosmagicos.org.br/wp-content/uploads/2021/08/Relatorio_atividades_2020.pdf
+
+cd /home/igor/Projetos/FIAP---Tech-Challenge-Fase-4
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install pandas openpyxl scikit-learn
