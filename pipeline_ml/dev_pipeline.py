@@ -16,6 +16,7 @@ from ba_feature_engineering.feature_engineering import (
     gerar_atributos_derivados,
     organizar_colunas_saida_feature_engineering,
     unificar_alvos_do_ano,
+    validar_esquema_feature_engineering,
 )
 
 TRAINING_IMPORT_ERROR = None
@@ -73,15 +74,20 @@ def main() -> None:
         preprocessado = padronizar_nomes_e_remover_duplicadas(df)
         antes_alias = preprocessado.copy()
         preprocessado = renomear_colunas_equivalentes(preprocessado)
-        inconsistencias_alias = validar_transferencia_colunas_equivalentes(antes_alias, preprocessado)
-        if inconsistencias_alias:
-            raise ValueError(f"Inconsistencias de transferencia de aliases em {sheet}: {inconsistencias_alias}")
+        validar_transferencia_colunas_equivalentes(antes_alias, preprocessado)
         preprocessado = ajustar_tipos_numericos(preprocessado)
         preprocessado = normalizar_colunas_categoricas(preprocessado)
         preprocessado = normalizar_valores_ausentes(preprocessado)
         preprocessado = organizar_colunas_para_saida(preprocessado)
 
+
         # Etapa 2: Feature engineering (geração de atributos derivados)
+        esquema_status = validar_esquema_feature_engineering(preprocessado)
+        if esquema_status["recomendadas_faltando"]:
+            print(
+                f"[WARN] Colunas recomendadas ausentes em {sheet}: "
+                f"{esquema_status['recomendadas_faltando']}"
+            )
         featured = unificar_alvos_do_ano(preprocessado, ano_referencia=year)
         featured = gerar_atributos_derivados(featured, ano_referencia=year)
         featured = organizar_colunas_saida_feature_engineering(featured)

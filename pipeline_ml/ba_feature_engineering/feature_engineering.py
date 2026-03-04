@@ -16,6 +16,7 @@ COLUNAS_AVALIADORES = [
     "Avaliador6",
 ]
 COLUNAS_RECOMENDACOES = ["Rec Av1", "Rec Av2", "Rec Av3", "Rec Av4", "Rec Psicologia"]
+
 COLUNAS_DERIVADAS = [
     "DERIV_ANO_REFERENCIA",
     "DERIV_ANOS_NO_PROGRAMA",
@@ -38,7 +39,6 @@ COLUNAS_SAIDA_ORDENADA_FE = [
     "Instituição de ensino",
     "Ativo/ Inativo",
     "Ano ingresso",
-
     "Fase",
     "Fase Ideal",
     "Defasagem",
@@ -47,8 +47,9 @@ COLUNAS_SAIDA_ORDENADA_FE = [
     "Pedra 2022",
     "Pedra 2023",
     "Pedra 2024",
-    "INDE 22",
-    "INDE 23",
+    "INDE 2020",
+    "INDE 2021",
+    "INDE 2022",
     "INDE 2023",
     "INDE 2024",
     "Mat",
@@ -61,13 +62,41 @@ COLUNAS_SAIDA_ORDENADA_FE = [
     "IDA",
     "IPV",
     "IAN",
-
     "Nº Av",
     "Indicado",
     "Atingiu PV",
+    "Avaliador1",
+    "Avaliador2",
+    "Avaliador3",
+    "Avaliador4",
+    "Avaliador5",
     "DERIV_*",
 
 ]
+
+COLUNAS_RECOMENDADAS = ["Ano ingresso", "Fase"]
+
+
+def validar_esquema_feature_engineering(df: pd.DataFrame) -> dict[str, list[str]]:
+    """
+    Valida a presença de colunas úteis para o feature engineering.
+
+    Retorna um dicionário com listas de colunas faltantes por categoria.
+    Não lança exceções por padrão; o chamador decide como tratar.
+    """
+    recomendadas_faltando = [c for c in COLUNAS_RECOMENDADAS if c not in df.columns]
+    indicadores_faltando = [c for c in COLUNAS_INDICADORES if c not in df.columns]
+    materias_faltando = [c for c in COLUNAS_MATERIAS if c not in df.columns]
+    avaliadores_faltando = [c for c in COLUNAS_AVALIADORES if c not in df.columns]
+    recomendacoes_faltando = [c for c in COLUNAS_RECOMENDACOES if c not in df.columns]
+
+    return {
+        "recomendadas_faltando": recomendadas_faltando,
+        "indicadores_faltando": indicadores_faltando,
+        "materias_faltando": materias_faltando,
+        "avaliadores_faltando": avaliadores_faltando,
+        "recomendacoes_faltando": recomendacoes_faltando,
+    }
 
 
 def converter_fase_para_numerico(valor_fase: Any) -> float:
@@ -89,6 +118,28 @@ def converter_fase_para_numerico(valor_fase: Any) -> float:
     letra = match.group(2)
     deslocamento_letra = 0.0 if not letra else (ord(letra) - ord("A")) / 10.0
     return numero + deslocamento_letra
+
+
+def _colunas_existentes(df: pd.DataFrame, colunas: list[str]) -> list[str]:
+    return [c for c in colunas if c in df.columns]
+
+
+def _media_linhas(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
+    if not colunas:
+        return pd.Series(np.nan, index=df.index)
+    return df[colunas].mean(axis=1)
+
+
+def _desvio_linhas(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
+    if not colunas:
+        return pd.Series(np.nan, index=df.index)
+    return df[colunas].std(axis=1)
+
+
+def _contar_preenchidos(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
+    if not colunas:
+        return pd.Series(0, index=df.index)
+    return df[colunas].notna().sum(axis=1)
 
 
 def unificar_alvos_do_ano(df: pd.DataFrame, ano_referencia: int) -> pd.DataFrame:
@@ -154,32 +205,22 @@ def gerar_atributos_derivados(df: pd.DataFrame, ano_referencia: int) -> pd.DataF
     else:
         base["DERIV_FASE_NUMERICA"] = np.nan
 
-    colunas_materias_existentes = [c for c in COLUNAS_MATERIAS if c in base.columns]
-    if colunas_materias_existentes:
-        base["DERIV_MEDIA_NOTAS"] = base[colunas_materias_existentes].mean(axis=1)
-        base["DERIV_DESVIO_NOTAS"] = base[colunas_materias_existentes].std(axis=1)
-    else:
-        base["DERIV_MEDIA_NOTAS"] = np.nan
-        base["DERIV_DESVIO_NOTAS"] = np.nan
+    colunas_materias_existentes = _colunas_existentes(base, COLUNAS_MATERIAS)
+    base["DERIV_MEDIA_NOTAS"] = _media_linhas(base, colunas_materias_existentes)
+    base["DERIV_DESVIO_NOTAS"] = _desvio_linhas(base, colunas_materias_existentes)
 
-    colunas_indicadores_existentes = [c for c in COLUNAS_INDICADORES if c in base.columns]
-    if colunas_indicadores_existentes:
-        base["DERIV_MEDIA_INDICADORES"] = base[colunas_indicadores_existentes].mean(axis=1)
-    else:
-        base["DERIV_MEDIA_INDICADORES"] = np.nan
+    colunas_indicadores_existentes = _colunas_existentes(base, COLUNAS_INDICADORES)
+    base["DERIV_MEDIA_INDICADORES"] = _media_linhas(base, colunas_indicadores_existentes)
 
-    colunas_avaliadores_existentes = [c for c in COLUNAS_AVALIADORES if c in base.columns]
-    colunas_recomendacoes_existentes = [c for c in COLUNAS_RECOMENDACOES if c in base.columns]
+    colunas_avaliadores_existentes = _colunas_existentes(base, COLUNAS_AVALIADORES)
+    colunas_recomendacoes_existentes = _colunas_existentes(base, COLUNAS_RECOMENDACOES)
 
-    if colunas_avaliadores_existentes:
-        base["DERIV_QTD_AVALIADORES_PREENCHIDOS"] = base[colunas_avaliadores_existentes].notna().sum(axis=1)
-    else:
-        base["DERIV_QTD_AVALIADORES_PREENCHIDOS"] = 0
-
-    if colunas_recomendacoes_existentes:
-        base["DERIV_QTD_RECOMENDACOES_PREENCHIDAS"] = base[colunas_recomendacoes_existentes].notna().sum(axis=1)
-    else:
-        base["DERIV_QTD_RECOMENDACOES_PREENCHIDAS"] = 0
+    base["DERIV_QTD_AVALIADORES_PREENCHIDOS"] = _contar_preenchidos(
+        base, colunas_avaliadores_existentes
+    )
+    base["DERIV_QTD_RECOMENDACOES_PREENCHIDAS"] = _contar_preenchidos(
+        base, colunas_recomendacoes_existentes
+    )
 
     return base
 

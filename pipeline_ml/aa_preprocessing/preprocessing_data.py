@@ -86,6 +86,8 @@ COLUNAS_SAIDA_ORDENADA = [
     "Pedra 2022",
     "Pedra 2023",
     "Pedra 2024",
+    "INDE 2020",
+    "INDE 2021",
     "INDE 2022",
     "INDE 2023",
     "INDE 2024",
@@ -102,6 +104,11 @@ COLUNAS_SAIDA_ORDENADA = [
     "Nº Av",
     "Indicado",
     "Atingiu PV",
+    "Avaliador1",
+    "Avaliador2",
+    "Avaliador3",
+    "Avaliador4",
+    "Avaliador5",
 ]
 
 
@@ -191,6 +198,9 @@ def validar_transferencia_colunas_equivalentes(
             inconsistencias.append(
                 f"Falha de transferencia {origem} -> {destino}: {faltantes} linhas nao preenchidas."
             )
+
+        if inconsistencias:
+            raise ValueError(f"Inconsistencias de transferencia de aliases em : {inconsistencias}")
 
     return inconsistencias
 
