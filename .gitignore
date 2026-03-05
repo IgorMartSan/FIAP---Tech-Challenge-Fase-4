@@ -46,4 +46,4 @@ pipeline_ml/outputs/*.pkl
 pipeline_ml/outputs/*.json
 pipeline_ml/outputs/*.csv
 
-.data/
+data/

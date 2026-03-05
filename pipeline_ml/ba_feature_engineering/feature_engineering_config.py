@@ -21,58 +21,95 @@ OUTPUT_SCHEMA = (
     "RA",
     "Mat",
     "Por",
-    "Ing",
+    #"Ing",
     "Pedra_0",
     "Pedra_1",
     "Pedra_2",
-    "Inde",
+    "IAA",
+    "IEG",
+    "IPS",
+    "IDA",
+    "IPV",
+    "IAN",
+    # "Atingiu PV",
+    "Defasagem",
+    "Defasagem FC",
 )
 
 
 # ---------------------------------------------------------
 # Mapeamento das features
-# coluna_saida -> coluna_origem_no_csv
+# coluna_saida (FC) <- coluna_origem_no_csv
 # ---------------------------------------------------------
 
 FEATURE_MAP_2022 = {
     "Mat": "Mat",
     "Por": "Por",
-    "Ing": "Ing",
+    #"Ing": "Ing",
     "Pedra_0": "Pedra 2020",
     "Pedra_1": "Pedra 2021",
     "Pedra_2": "Pedra 2022",
-    "Inde": "INDE 2022"
+    "INDE": "INDE 2022",
+    "IAA": "IAA",
+    "IEG": "IEG",
+    "IPS": "IPS",
+    "IDA": "IDA",
+    "IPV": "IPV",
+    "IAN": "IAN",
+    #"Atingiu PV": "Atingiu PV",
+    "Defasagem": "Defasagem",
+
 }
 
 FEATURE_MAP_2023 = {
     "Mat": "Mat",
     "Por": "Por",
-    "Ing": "Ing",
+    #"Ing": "Ing",
     "Pedra_0": "Pedra 2021",
     "Pedra_1": "Pedra 2022",
     "Pedra_2": "Pedra 2023",
-    "Inde": "INDE 2023"
+    "INDE": "INDE 2023",
+    "IAA": "IAA",
+    "IEG": "IEG",
+    "IPS": "IPS",
+    "IDA": "IDA",
+    "IPV": "IPV",
+    "IAN": "IAN",
+    #"Atingiu PV": "Atingiu PV",
+    "Defasagem": "Defasagem",
+
+
 }
 
 
 FEATURE_MAP_2024 = {
     "Mat": "Mat",
     "Por": "Por",
-    "Ing": "Ing",
+    #"Ing": "Ing",
     "Pedra_0": "Pedra 2022",
     "Pedra_1": "Pedra 2023",
     "Pedra_2": "Pedra 2024",
-    "Inde": "INDE 2024"
+    "INDE": "INDE 2024",
+    "IAA": "IAA",
+    "IEG": "IEG",
+    "IPS": "IPS",
+    "IDA": "IDA",
+    "IPV": "IPV",
+    "IAN": "IAN",
+    # "Atingiu PV": "Atingiu PV",
+    "Defasagem": "Defasagem",
+
+
 }
 
 
 # ---------------------------------------------------------
 # Mapeamento do target
-# coluna_saida -> coluna_origem_no_csv
+# coluna_saida (FC) <- coluna_origem_no_csv
 # ---------------------------------------------------------
 
 TARGET_MAP = {
-    "Defasagem": "Defasagem",
+    "Defasagem FC": "Defasagem",
 }
 
 
