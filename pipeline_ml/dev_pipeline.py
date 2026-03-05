@@ -29,6 +29,8 @@ from ba_feature_engineering.feature_engineering_config import (
     STRICT_SCHEMA,
 )
 
+from ca_train.train_model import TrainConfig, DefasagemTrainer
+
 PATH = "/mnt/HDD2TB/projetos_igor/FIAP---Tech-Challenge-Fase-4/arquivos_do_projeto/BASE DE DADOS PEDE 2024 - DATATHON.xlsx"
 
 
@@ -139,7 +141,7 @@ if __name__ == "__main__":
         2023: FEATURE_MAP_2023,
         2024: FEATURE_MAP_2024,
     }
-
+    datasets_model = []
     for feat_year, tgt_year in year_pairs:
         df_features = dfs_by_year[feat_year]
         df_target = dfs_by_year[tgt_year]
@@ -162,10 +164,26 @@ if __name__ == "__main__":
 
         ds_model = ds_model.dropna()
 
+        print(ds_model.dtypes)
+
         out_path = f"data/model/pede_dataset_model_{feat_year}_to_{tgt_year}.csv"
         ds_model.to_csv(out_path, index=False, encoding="utf-8")
 
         print(f"[OK] salvo: {out_path} | shape={ds_model.shape}")
+
+        datasets_model.append(ds_model)
+
+    dataset_final = pd.concat(datasets_model, ignore_index=True)
+
+    dataset_final.to_csv(
+    "data/model/pede_dataset_model_all_years.csv",
+    index=False
+)
+
+    print(dataset_final.shape)
+
+
+
     
 
     # -------------------------------
