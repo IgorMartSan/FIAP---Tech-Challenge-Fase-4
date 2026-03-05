@@ -1,255 +1,168 @@
-import re
-from typing import Any
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Mapping, Sequence, Any, Optional
 
 import numpy as np
 import pandas as pd
 
 
-COLUNAS_INDICADORES = ["IAA", "IEG", "IPS", "IPP", "IDA", "IPV", "IAN"]
-COLUNAS_MATERIAS = ["Mat", "Por", "Ing"]
-COLUNAS_AVALIADORES = [
-    "Avaliador1",
-    "Avaliador2",
-    "Avaliador3",
-    "Avaliador4",
-    "Avaliador5",
-    "Avaliador6",
-]
-COLUNAS_RECOMENDACOES = ["Rec Av1", "Rec Av2", "Rec Av3", "Rec Av4", "Rec Psicologia"]
-
-COLUNAS_DERIVADAS = [
-    "DERIV_ANO_REFERENCIA",
-    "DERIV_ANOS_NO_PROGRAMA",
-    "DERIV_FASE_NUMERICA",
-    "DERIV_MEDIA_NOTAS",
-    "DERIV_DESVIO_NOTAS",
-    "DERIV_MEDIA_INDICADORES",
-    "DERIV_QTD_AVALIADORES_PREENCHIDOS",
-    "DERIV_QTD_RECOMENDACOES_PREENCHIDAS",
-    "DERIV_INDE_ATUAL",
-    "DERIV_PEDRA_ATUAL",
-]
-
-COLUNAS_SAIDA_ORDENADA_FE = [
-    "RA",
-    "Nome",
-    "Gênero",
-    "Turma",
-    "Escola",
-    "Instituição de ensino",
-    "Ativo/ Inativo",
-    "Ano ingresso",
-    "Fase",
-    "Fase Ideal",
-    "Defasagem",
-    "Pedra 2020",
-    "Pedra 2021",
-    "Pedra 2022",
-    "Pedra 2023",
-    "Pedra 2024",
-    "INDE 2020",
-    "INDE 2021",
-    "INDE 2022",
-    "INDE 2023",
-    "INDE 2024",
-    "Mat",
-    "Por",
-    "Ing",
-    "IAA",
-    "IEG",
-    "IPS",
-    "IPP",
-    "IDA",
-    "IPV",
-    "IAN",
-    "Nº Av",
-    "Indicado",
-    "Atingiu PV",
-    "Avaliador1",
-    "Avaliador2",
-    "Avaliador3",
-    "Avaliador4",
-    "Avaliador5",
-    "DERIV_*",
-
-]
-
-COLUNAS_RECOMENDADAS = ["Ano ingresso", "Fase"]
-
-
-def validar_esquema_feature_engineering(df: pd.DataFrame) -> dict[str, list[str]]:
+@dataclass(frozen=True)
+class SingleYearToNextYearConfig:
     """
-    Valida a presença de colunas úteis para o feature engineering.
+    Configuração para montar um dataset de modelagem do tipo:
 
-    Retorna um dicionário com listas de colunas faltantes por categoria.
-    Não lança exceções por padrão; o chamador decide como tratar.
+        (features do ano A)  ->  (target do ano A+1)
+
+    Você define explicitamente:
+    - quais colunas saem no dataset final (output_schema)
+    - de onde vem cada coluna (feature_map e target_map)
+    - qual é a chave de merge (id_col)
+
+    O objetivo é garantir um "contrato" rígido:
+    - O CSV final sempre terá as colunas definidas em `output_schema`.
+    - Se alguma coluna não puder ser preenchida, falha com erro claro
+      (ou, opcionalmente, preenche com NaN).
     """
-    recomendadas_faltando = [c for c in COLUNAS_RECOMENDADAS if c not in df.columns]
-    indicadores_faltando = [c for c in COLUNAS_INDICADORES if c not in df.columns]
-    materias_faltando = [c for c in COLUNAS_MATERIAS if c not in df.columns]
-    avaliadores_faltando = [c for c in COLUNAS_AVALIADORES if c not in df.columns]
-    recomendacoes_faltando = [c for c in COLUNAS_RECOMENDACOES if c not in df.columns]
 
-    return {
-        "recomendadas_faltando": recomendadas_faltando,
-        "indicadores_faltando": indicadores_faltando,
-        "materias_faltando": materias_faltando,
-        "avaliadores_faltando": avaliadores_faltando,
-        "recomendacoes_faltando": recomendacoes_faltando,
-    }
+    # chave única do aluno
+    id_col: str = "RA"
+
+    # colunas finais (ordem do CSV final)
+    output_schema: Sequence[str] = field(default_factory=tuple)
+
+    # Mapeamento: coluna_final -> coluna_origem_no_df_features
+    # Ex.: {"mat": "Mat", "por": "Por", "pedra": "Pedra 2023"}
+    feature_map: Mapping[str, str] = field(default_factory=dict)
+
+    # Mapeamento: coluna_final -> coluna_origem_no_df_target
+    # Ex.: {"target__inde": "INDE 2024"}
+    target_map: Mapping[str, str] = field(default_factory=dict)
+
+    # Se True, exige que todas as colunas do schema sejam preenchidas (exceto id).
+    # Se False, colunas ausentes viram NaN.
+    strict_schema: bool = True
+
+    # Como fazer merge entre features e target:
+    # - "inner" mantém só alunos presentes em ambos
+    # - "left" mantém todos de features e target pode virar NaN
+    join_how: str = "inner"
 
 
-def converter_fase_para_numerico(valor_fase: Any) -> float:
+class SingleYearToNextYearBuilder:
     """
-    Converte a fase textual (`ALFA`, `1A`, `1B`, etc.) para escala numérica.
+    Builder para montar dataset tabular simples:
+    features (ano A) + target (ano A+1) via merge por id_col.
+
+    Ele também aplica um "schema fixo" para o CSV final.
     """
-    if pd.isna(valor_fase):
-        return np.nan
 
-    texto = str(valor_fase).strip().upper()
-    if texto == "ALFA":
-        return 0.0
+    def __init__(self, config: SingleYearToNextYearConfig):
+        self.config = config
 
-    match = re.match(r"^(\d+)\s*([A-Z])?$", texto)
-    if not match:
-        return np.nan
-
-    numero = int(match.group(1))
-    letra = match.group(2)
-    deslocamento_letra = 0.0 if not letra else (ord(letra) - ord("A")) / 10.0
-    return numero + deslocamento_letra
-
-
-def _colunas_existentes(df: pd.DataFrame, colunas: list[str]) -> list[str]:
-    return [c for c in colunas if c in df.columns]
-
-
-def _media_linhas(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
-    if not colunas:
-        return pd.Series(np.nan, index=df.index)
-    return df[colunas].mean(axis=1)
-
-
-def _desvio_linhas(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
-    if not colunas:
-        return pd.Series(np.nan, index=df.index)
-    return df[colunas].std(axis=1)
-
-
-def _contar_preenchidos(df: pd.DataFrame, colunas: list[str]) -> pd.Series:
-    if not colunas:
-        return pd.Series(0, index=df.index)
-    return df[colunas].notna().sum(axis=1)
-
-
-def unificar_alvos_do_ano(df: pd.DataFrame, ano_referencia: int) -> pd.DataFrame:
-    """
-    Unifica as colunas de INDE e Pedra do ano de referência em colunas únicas.
-
-    Saída:
-    - `DERIV_INDE_ATUAL`
-    - `DERIV_PEDRA_ATUAL`
-    """
-    base = df.copy()
-    mapa_inde = {
-        2022: ["INDE 22"],
-        2023: ["INDE 2023", "INDE 23"],
-        2024: ["INDE 2024"],
-    }
-    mapa_pedra = {
-        2022: ["Pedra 2022"],
-        2023: ["Pedra 2023", "Pedra 23"],
-        2024: ["Pedra 2024"],
-    }
-
-    base["DERIV_INDE_ATUAL"] = np.nan
-    base["DERIV_PEDRA_ATUAL"] = np.nan
-
-    for coluna in mapa_inde.get(ano_referencia, []):
-        if coluna in base.columns:
-            base["DERIV_INDE_ATUAL"] = base[coluna]
-            break
-
-    for coluna in mapa_pedra.get(ano_referencia, []):
-        if coluna in base.columns:
-            base["DERIV_PEDRA_ATUAL"] = base[coluna]
-            break
-
-    return base
-
-
-def gerar_atributos_derivados(df: pd.DataFrame, ano_referencia: int) -> pd.DataFrame:
-    """
-    Gera atributos derivados usados no treino e na análise.
-
-    Atributos gerados:
-    - `DERIV_ANO_REFERENCIA`
-    - `DERIV_ANOS_NO_PROGRAMA`
-    - `DERIV_FASE_NUMERICA`
-    - `DERIV_MEDIA_NOTAS`
-    - `DERIV_DESVIO_NOTAS`
-    - `DERIV_MEDIA_INDICADORES`
-    - `DERIV_QTD_AVALIADORES_PREENCHIDOS`
-    - `DERIV_QTD_RECOMENDACOES_PREENCHIDAS`
-    """
-    base = df.copy()
-    base["DERIV_ANO_REFERENCIA"] = ano_referencia
-
-    if "Ano ingresso" in base.columns:
-        base["DERIV_ANOS_NO_PROGRAMA"] = ano_referencia - base["Ano ingresso"]
-    else:
-        base["DERIV_ANOS_NO_PROGRAMA"] = np.nan
-
-    if "Fase" in base.columns:
-        base["DERIV_FASE_NUMERICA"] = base["Fase"].apply(converter_fase_para_numerico)
-    else:
-        base["DERIV_FASE_NUMERICA"] = np.nan
-
-    colunas_materias_existentes = _colunas_existentes(base, COLUNAS_MATERIAS)
-    base["DERIV_MEDIA_NOTAS"] = _media_linhas(base, colunas_materias_existentes)
-    base["DERIV_DESVIO_NOTAS"] = _desvio_linhas(base, colunas_materias_existentes)
-
-    colunas_indicadores_existentes = _colunas_existentes(base, COLUNAS_INDICADORES)
-    base["DERIV_MEDIA_INDICADORES"] = _media_linhas(base, colunas_indicadores_existentes)
-
-    colunas_avaliadores_existentes = _colunas_existentes(base, COLUNAS_AVALIADORES)
-    colunas_recomendacoes_existentes = _colunas_existentes(base, COLUNAS_RECOMENDACOES)
-
-    base["DERIV_QTD_AVALIADORES_PREENCHIDOS"] = _contar_preenchidos(
-        base, colunas_avaliadores_existentes
-    )
-    base["DERIV_QTD_RECOMENDACOES_PREENCHIDAS"] = _contar_preenchidos(
-        base, colunas_recomendacoes_existentes
-    )
-
-    return base
-
-
-def organizar_colunas_saida_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Reorganiza as colunas finais na ordem lógica de saída do feature engineering.
-
-    Mantém todas as colunas:
-    - Colunas conhecidas vêm primeiro, na ordem definida.
-    - O marcador `DERIV_*` em `COLUNAS_SAIDA_ORDENADA_FE` expande para
-      todas as colunas derivadas existentes.
-    - Colunas não mapeadas são anexadas ao final.
-    """
-    colunas_derivadas = [col for col in COLUNAS_DERIVADAS if col in df.columns]
-    colunas_derivadas_extras = [
-        col for col in df.columns if col.startswith("DERIV_") and col not in colunas_derivadas
-    ]
-    todas_colunas_derivadas = colunas_derivadas + colunas_derivadas_extras
-
-    colunas_ordenadas: list[str] = []
-    for coluna in COLUNAS_SAIDA_ORDENADA_FE:
-        if coluna == "DERIV_*":
-            colunas_ordenadas.extend(
-                [col for col in todas_colunas_derivadas if col not in colunas_ordenadas]
+    def _ensure_id(self, df: pd.DataFrame, df_name: str) -> None:
+        if self.config.id_col not in df.columns:
+            raise ValueError(
+                f"[{df_name}] Coluna id '{self.config.id_col}' não existe. "
+                f"Colunas disponíveis: {list(df.columns)}"
             )
-            continue
-        if coluna in df.columns and coluna not in colunas_ordenadas:
-            colunas_ordenadas.append(coluna)
 
-    colunas_restantes = [col for col in df.columns if col not in colunas_ordenadas]
-    return df[colunas_ordenadas + colunas_restantes].copy()
+    def _dedup_by_id(self, df: pd.DataFrame, df_name: str) -> pd.DataFrame:
+        """
+        Garante 1 linha por id.
+        Se houver duplicatas, mantém a primeira (regra simples e testável).
+        """
+        self._ensure_id(df, df_name)
+        return df.drop_duplicates(subset=[self.config.id_col], keep="first").copy()
+
+    def _build_side(
+        self,
+        df: pd.DataFrame,
+        mapping: Mapping[str, str],
+        df_name: str,
+    ) -> pd.DataFrame:
+        """
+        Seleciona colunas do df e renomeia para o nome final.
+
+        Retorna um DF com:
+          [id_col] + colunas finais definidas no mapping
+        """
+        base = self._dedup_by_id(df, df_name)
+
+        # valida colunas de origem
+        missing_src = [src for src in mapping.values() if src not in base.columns]
+        if missing_src and self.config.strict_schema:
+            raise ValueError(
+                f"[{df_name}] Colunas de origem ausentes: {missing_src}. "
+                f"Colunas disponíveis: {list(base.columns)}"
+            )
+
+        out = base[[self.config.id_col]].copy()
+
+        # cria cada coluna final
+        for out_col, src_col in mapping.items():
+            if src_col in base.columns:
+                out[out_col] = base[src_col]
+            else:
+                out[out_col] = np.nan  # se strict_schema=False isso permite seguir
+
+        return out
+
+    def _validate_output_schema(self, df_final: pd.DataFrame) -> pd.DataFrame:
+        """
+        Garante que o DF final tem exatamente o schema e na ordem do schema.
+        """
+        if not self.config.output_schema:
+            raise ValueError("output_schema está vazio. Defina as colunas finais do CSV.")
+
+        # id_col precisa estar no schema
+        if self.config.id_col not in self.config.output_schema:
+            raise ValueError(
+                f"id_col '{self.config.id_col}' deve estar dentro de output_schema."
+            )
+
+        # cria colunas faltantes (se strict_schema=False) ou falha (se True)
+        missing_out = [c for c in self.config.output_schema if c not in df_final.columns]
+        if missing_out:
+            if self.config.strict_schema:
+                raise ValueError(
+                    f"Schema final incompleto. Faltando colunas: {missing_out}. "
+                    f"Colunas presentes: {list(df_final.columns)}"
+                )
+            for c in missing_out:
+                df_final[c] = np.nan
+
+        # remove colunas extras (mantém só as do schema)
+        df_final = df_final[list(self.config.output_schema)].copy()
+
+        return df_final
+
+    def build(self, df_features: pd.DataFrame, df_target: pd.DataFrame) -> pd.DataFrame:
+        """
+        Constrói o dataset final:
+
+        1) Lê df_features e monta colunas conforme feature_map
+        2) Lê df_target e monta colunas conforme target_map
+        3) Faz merge por id_col
+        4) Reordena/valida schema final (output_schema)
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataset final pronto para salvar em CSV e treinar modelo.
+        """
+        # monta lados
+        features_side = self._build_side(df_features, self.config.feature_map, "features")
+        target_side = self._build_side(df_target, self.config.target_map, "target")
+
+        # merge
+        merged = features_side.merge(
+            target_side,
+            on=self.config.id_col,
+            how=self.config.join_how,
+        )
+
+        # schema final
+        merged = self._validate_output_schema(merged)
+
+        return merged
