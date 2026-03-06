@@ -5,18 +5,18 @@
 ### 1. Planejamento e Contexto
 - [X] Definir problema de negócio e objetivo preditivo (risco de defasagem escolar)
 - [X] Mapear dados disponíveis (2022, 2023, 2024) e critérios de sucesso
-- [ ] Definir stack e padrão de organização do projeto
+- [X] Definir stack e padrão de organização do projeto
 
 ### 2. Dados e Modelagem
-- [ ] Construir pipeline de dados (preprocessamento + engenharia de atributos)
-- [ ] Treinar e validar modelo com métrica justificada para produção
-- [ ] Serializar modelo treinado (`pickle` ou `joblib`)
+- [X] Construir pipeline de dados (preprocessamento + engenharia de atributos)
+- [X] Treinar e validar modelo com métrica justificada para produção
+- [X] Serializar modelo treinado (`pickle` ou `joblib`)
 
 ### 3. Engenharia de Software e MLOps
-- [ ] Modularizar código em componentes reutilizáveis (`src/`, serviços, utilitários)
-- [ ] Implementar API de predição (`/predict`) com Flask ou FastAPI
-- [ ] Containerizar solução com Docker (`Dockerfile` + execução local)
-- [ ] Realizar deploy local ou em nuvem e garantir disponibilidade da API
+- [X] Modularizar código em componentes reutilizáveis (`src/`, serviços, utilitários)
+- [X] Implementar API de predição (`/predict`) com Flask ou FastAPI
+- [X] Containerizar solução com Docker (`Dockerfile` + execução local)
+- [X] Realizar deploy local ou em nuvem e garantir disponibilidade da API
 
 ### 4. Qualidade e Confiabilidade
 - [ ] Implementar testes da API (funcionais/integrados)

@@ -17,14 +17,15 @@ WORKDIR /app
 # copia arquivos de dependência primeiro para aproveitar cache
 COPY pyproject.toml uv.lock* ./
 
-# instala dependências do projeto
-RUN uv sync --frozen --no-dev || uv sync --no-dev
+# instala dependências do projeto (inclui dev para rodar testes)
+RUN uv sync --frozen --dev || uv sync --dev
 
-# copia código
+# copia código e testes
 COPY src ./src
+COPY tests ./tests
 
 # expõe a porta da API
 EXPOSE 8000
 
-# executa a aplicação
-CMD ["uv", "run", "python", "src/main.py"]
+# executa testes e sobe a aplicação
+CMD ["sh", "-c", "uv run pytest && uv run python src/main.py"]

@@ -167,7 +167,13 @@ class BinaryDefasagemTrainer:
         return X, y
 
     def _split_data(self, X: pd.DataFrame, y: pd.Series) -> None:
-        strat = y if self.config.stratify else None
+        def _can_stratify(target: pd.Series) -> bool:
+            if not self.config.stratify:
+                return False
+            counts = target.value_counts()
+            return len(counts) > 1 and counts.min() >= 2
+
+        strat = y if _can_stratify(y) else None
 
         # primeiro: train e temp
         X_train, X_temp, y_train, y_temp = train_test_split(
@@ -182,7 +188,7 @@ class BinaryDefasagemTrainer:
         temp_total = self.config.val_size + self.config.test_size
         relative_test_size = self.config.test_size / temp_total
 
-        strat_temp = y_temp if self.config.stratify else None
+        strat_temp = y_temp if _can_stratify(y_temp) else None
 
         X_val, X_test, y_val, y_test = train_test_split(
             X_temp,
