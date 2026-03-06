@@ -1,48 +1,62 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, f1_score, accuracy_score
-from lightgbm import LGBMClassifier
+   
 
-df = pd.read_csv("/mnt/HDD2TB/projetos_igor/FIAP---Tech-Challenge-Fase-4/pipeline_ml/data/model/pede_dataset_model_all_years.csv")
+from ca_train.train_model import BinaryTrainingConfig, BinaryDefasagemTrainer
 
-TARGET = "Defasagem FC"
+ # ---------------------------------------------------------
+    # 6) configurar treino
+    # ---------------------------------------------------------
+    model_output_path = "data/model/model_defasagem_fc_binario_lgbm.joblib"
 
-# 1) y binário correto: negativo = ruim
-y = (df[TARGET].astype(float) < 0).astype(int)
+    train_config = BinaryTrainingConfig(
+        train_size=0.70,                    # 70% treino
+        val_size=0.15,                      # 15% validação
+        test_size=0.15,                     # 15% teste
+        random_state=42,                    # reprodutibilidade
+        stratify=True,                      # mantém proporção das classes
+        id_cols=("RA",),                    # remove RA do treino
+        leak_cols=("Defasagem",),           # remove coluna que gera leakage
+        target_rule="negative_is_1",        # 1 se Defasagem futura < 0
+        fill_numeric_with_median=True,      # preenche NaN numérico com mediana
+        fill_categorical_with_missing=True, # preenche NaN categórico com "missing"
+        remove_constant_columns=True,       # remove colunas constantes
+        n_estimators=5000,                  # número máximo de árvores
+        learning_rate=0.03,                 # taxa de aprendizado
+        num_leaves=31,                      # folhas por árvore
+        min_data_in_leaf=10,                # mínimo de exemplos por folha
+        subsample=0.9,                      # fração de linhas por árvore
+        colsample_bytree=0.9,               # fração de colunas por árvore
+        reg_lambda=1.0,                     # regularização L2
+        force_col_wise=True,                # otimização LightGBM
+        verbosity=-1,                       # sem logs excessivos
+        output_model_path=model_output_path # onde salvar o modelo
+    )
 
-# 2) X
-drop_cols = ["RA"]
-if "Defasagem" in df.columns:
-    drop_cols.append("Defasagem")
+    # ---------------------------------------------------------
+    # 7) treinar modelo
+    # ---------------------------------------------------------
+    trainer = BinaryDefasagemTrainer(
+        dataset=dataset_final,
+        target_col="Defasagem futura",
+        config=train_config,
+    )
 
-# object->category
-for c in df.select_dtypes(include=["object"]).columns:
-    if c not in drop_cols and c != TARGET:
-        df[c] = df[c].astype("string").fillna("missing").astype("category")
+    result = trainer.train()
 
-X = df.drop(columns=drop_cols + [TARGET], errors="ignore")
+    # ---------------------------------------------------------
+    # 8) exibir resultados
+    # ---------------------------------------------------------
+    print("\n==== SHAPES ====")
+    print(result["shapes"])
 
-# NaN numéricas
-for col in X.select_dtypes(include=["number"]).columns:
-    if X[col].isna().any():
-        X[col] = X[col].fillna(X[col].median())
+    print("\n==== MÉTRICAS ====")
+    print("Accuracy:", result["metrics"]["accuracy"])
+    print("F1:", result["metrics"]["f1"])
+    print(result["metrics"]["report"])
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+    print("\n==== FEATURE IMPORTANCE ====")
+    print(result["feature_importance"].head(15))
 
-model = LGBMClassifier(
-    n_estimators=1200,
-    learning_rate=0.03,
-    min_data_in_leaf=10,
-    class_weight="balanced",
-    random_state=42
-    # verbosity=-1
-)
-
-model.fit(X_train, y_train)
-pred = model.predict(X_test)
-
-print("Accuracy:", accuracy_score(y_test, pred))
-print("F1 (classe ruim=1):", f1_score(y_test, pred))
-print(classification_report(y_test, pred, digits=4))
+    # opcional: salvar feature importance
+    fi_path = "data/model/feature_importance.csv"
+    result["feature_importance"].to_csv(fi_path, index=False)
+    print(f"\n[OK] feature importance salva em: {fi_path}")

@@ -25,6 +25,7 @@ OUTPUT_SCHEMA = (
     "Pedra_0",
     "Pedra_1",
     "Pedra_2",
+    "INDE",
     "IAA",
     "IEG",
     "IPS",
@@ -33,7 +34,7 @@ OUTPUT_SCHEMA = (
     "IAN",
     # "Atingiu PV",
     "Defasagem",
-    "Defasagem FC",
+    "Defasagem futura",
 )
 
 
@@ -46,6 +47,7 @@ FEATURE_MAP_2022 = {
     "Mat": "Mat",
     "Por": "Por",
     #"Ing": "Ing",
+
     "Pedra_0": "Pedra 2020",
     "Pedra_1": "Pedra 2021",
     "Pedra_2": "Pedra 2022",
@@ -109,7 +111,7 @@ FEATURE_MAP_2024 = {
 # ---------------------------------------------------------
 
 TARGET_MAP = {
-    "Defasagem FC": "Defasagem",
+    "Defasagem futura": "Defasagem",
 }
 
 

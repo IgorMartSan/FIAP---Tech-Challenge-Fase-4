@@ -3,8 +3,8 @@
 ## Checklist Macro do Projeto
 
 ### 1. Planejamento e Contexto
-- [ ] Definir problema de negócio e objetivo preditivo (risco de defasagem escolar)
-- [ ] Mapear dados disponíveis (2022, 2023, 2024) e critérios de sucesso
+- [X] Definir problema de negócio e objetivo preditivo (risco de defasagem escolar)
+- [X] Mapear dados disponíveis (2022, 2023, 2024) e critérios de sucesso
 - [ ] Definir stack e padrão de organização do projeto
 
 ### 2. Dados e Modelagem
