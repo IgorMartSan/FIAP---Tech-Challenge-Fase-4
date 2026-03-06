@@ -280,7 +280,8 @@ class BinaryDefasagemTrainer:
             "target": self.target_col,
             "target_rule": self.config.target_rule,
             "const_cols_dropped": self.const_cols_dropped_,
-            "config": self.config,
+            "id_cols": list(self.config.id_cols),
+            "leak_cols": list(self.config.leak_cols),
         }
 
         joblib.dump(artifact, path)
