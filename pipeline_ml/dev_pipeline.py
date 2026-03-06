@@ -1,4 +1,7 @@
 import os
+import json
+import hashlib
+from dataclasses import asdict
 import numpy as np
 import pandas as pd
 
@@ -182,9 +185,22 @@ if __name__ == "__main__":
     print(f"[INFO] Shape final: {dataset_final.shape}")
 
     # ---------------------------------------------------------
+    # 5.1) gerar hash do dataset (para versionar artefatos)
+    # ---------------------------------------------------------
+    def _sha256_file(path: str, chunk_size: int = 1024 * 1024) -> str:
+        sha = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(chunk_size), b""):
+                sha.update(chunk)
+        return sha.hexdigest()
+
+    dataset_hash = _sha256_file(dataset_final_path)[:12]
+    print(f"[INFO] Hash do dataset: {dataset_hash}")
+
+    # ---------------------------------------------------------
     # 6) configurar treino
     # ---------------------------------------------------------
-    model_output_path = "data/model/model_defasagem_fc_binario_lgbm.joblib"
+    model_output_path = f"data/model/model_defasagem_fc_binario_lgbm_{dataset_hash}.joblib"
 
     train_config = BinaryTrainingConfig(
         train_size=0.70,
@@ -235,15 +251,29 @@ if __name__ == "__main__":
     print("\n==== FEATURE IMPORTANCE ====")
     print(result["feature_importance"].head(15))
 
-    fi_path = "data/model/feature_importance.csv"
+    fi_path = f"data/model/feature_importance_{dataset_hash}.csv"
     result["feature_importance"].to_csv(fi_path, index=False)
     print(f"\n[OK] feature importance salva em: {fi_path}")
+
+    # ---------------------------------------------------------
+    # 8.1) preparar payload do relatório consolidado
+    # ---------------------------------------------------------
+    report_payload = {
+        "dataset_hash": dataset_hash,
+        "train_config": asdict(train_config),
+        "train_metrics": {
+            "metrics": result["metrics"],
+            "shapes": result["shapes"],
+            "feature_cols": result["feature_cols"],
+            "const_cols_dropped": result["const_cols_dropped"],
+        },
+    }
 
     # ---------------------------------------------------------
     # 9) configurar avaliação
     # ---------------------------------------------------------
     evaluate_dataset_path = "/home/igor/Projetos/FIAP---Tech-Challenge-Fase-4/pipeline_ml/data/model/pede_dataset_model_all_years.csv"
-    evaluate_model_path = "/home/igor/Projetos/FIAP---Tech-Challenge-Fase-4/pipeline_ml/data/model/model_defasagem_fc_binario_lgbm.joblib"
+    evaluate_model_path = f"/home/igor/Projetos/FIAP---Tech-Challenge-Fase-4/pipeline_ml/data/model/model_defasagem_fc_binario_lgbm_{dataset_hash}.joblib"
 
     # ---------------------------------------------------------
     # 10) preparar dados para avaliação
@@ -284,13 +314,16 @@ if __name__ == "__main__":
     evaluation_report_text = evaluator.build_text_report(evaluation_results)
 
     # ---------------------------------------------------------
-    # 12) exibir e salvar relatório de avaliação
+    # 12) exibir e salvar relatório consolidado
     # ---------------------------------------------------------
     print("\n==== EVALUATION REPORT ====")
     print(evaluation_report_text)
 
-    evaluation_report_path = "data/model/evaluation_report.txt"
-    with open(evaluation_report_path, "w", encoding="utf-8") as f:
-        f.write(evaluation_report_text)
+    report_payload["evaluation_report"] = evaluation_report_text
 
-    print(f"[OK] relatório de avaliação salvo em: {evaluation_report_path}")
+    os.makedirs("data/model", exist_ok=True)
+    report_path = f"data/model/report_{dataset_hash}.json"
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report_payload, f, ensure_ascii=False, indent=2)
+
+    print(f"[OK] relatório consolidado salvo em: {report_path}")

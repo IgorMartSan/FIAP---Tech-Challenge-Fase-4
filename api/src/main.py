@@ -2,6 +2,9 @@ from fastapi import FastAPI
 import uvicorn
 
 from prediction_route import router as prediction_router
+from config.logging_config import LogConfig
+
+LogConfig().configure()
 
 app = FastAPI(
     title="Defasagem Prediction API",
