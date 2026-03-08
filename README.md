@@ -336,14 +336,7 @@ print(response.json())
    cd pipeline_ml
    uv sync
    source .venv/bin/activate  # Linux/Mac
-   python train.py
-   ```
-   No Windows:
-   ```bash
-   cd pipeline_ml
-   uv sync
-   .venv\Scripts\activate
-   python train.py
+   python dev_pipeline.py
    ```
 
 3. **Executar a API**:
@@ -351,15 +344,10 @@ print(response.json())
    cd api
    uv sync
    source .venv/bin/activate  # Linux/Mac
-   python -m uvicorn src.main:app --reload
+   cd src
+   python main.py
    ```
-   No Windows:
-   ```bash
-   cd api
-   uv sync
-   .venv\Scripts\activate
-   python -m uvicorn src.main:app --reload
-   ```
+
    A API ficará disponível em `http://localhost:8000`.
 
 ### Como Testar o Código
