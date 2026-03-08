@@ -19,21 +19,21 @@
 - [X] Realizar deploy local ou em nuvem e garantir disponibilidade da API
 
 ### 4. Qualidade e Confiabilidade
-- [ ] Implementar testes da API (funcionais/integrados)
-- [ ] Implementar testes unitários da pipeline com cobertura mínima de 80%
-- [ ] Configurar logs e monitoramento contínuo com acompanhamento de drift
+- [X] Implementar testes da API (funcionais/integrados)
+- [X] Implementar testes unitários da pipeline com cobertura mínima de 80%
+- [X] Configurar logs e para acompanhamento de drift
 
 ### 5. Documentação e Entrega Final
-- [ ] Documentar visão geral, solução proposta e stack tecnológica
-- [ ] Documentar estrutura de pastas e instruções de execução/deploy
-- [ ] Incluir exemplos de chamadas à API (input/output esperado)
-- [ ] Documentar etapas do pipeline de Machine Learning
-- [ ] Consolidar entregáveis: repositório GitHub, documentação, link da API e vídeo (até 5 min)
+- [X] Documentar visão geral, solução proposta e stack tecnológica
+- [X] Documentar estrutura de pastas e instruções de execução/deploy
+- [X] Incluir exemplos de chamadas à API (input/output esperado)
+- [X] Documentar etapas do pipeline de Machine Learning
+- [X] Consolidar entregáveis: repositório GitHub, documentação, link da API e vídeo (até 5 min)
 
 ## 1. Visão Geral do Projeto
 
 ### Objetivo
-O projeto visa resolver o problema de negócio de previsão do risco de defasagem escolar dos estudantes da Passos Mágicos. A defasagem escolar é medida pelo indicador "Defasagem FC" (Fase Curricular), onde valores negativos indicam defasagem (atraso no currículo). O modelo preditivo identifica alunos com risco de defasagem futura, permitindo intervenções pedagógicas proativas.
+O projeto visa resolver o problema de negócio de previsão do risco de defasagem escolar dos estudantes da Passos Mágicos. A defasagem escolar é medida pelo indicador "Defasagem", onde valores negativos indicam defasagem (atraso no currículo). O modelo preditivo identifica alunos com risco de defasagem futura, permitindo intervenções pedagógicas proativas.
 
 ### Solução Proposta
 Construção de uma pipeline completa de Machine Learning, desde o pré-processamento dos dados brutos até o deploy do modelo em produção via API. A pipeline inclui:
@@ -54,7 +54,51 @@ Construção de uma pipeline completa de Machine Learning, desde o pré-processa
 - **Deploy**: Local / Cloud (Heroku, AWS, GCP etc.)
 - **Monitoramento**: logging (estrutura para dashboard de drift futuro)
 
-## 2. Estrutura do Projeto
+## 2. Explicação do Modelo
+
+### Tipo de Problema
+O modelo resolve um problema de **classificação binária**. A tarefa é prever se um aluno terá ou não risco de defasagem escolar futura com base em indicadores acadêmicos e contextuais do período atual.
+
+- **Classe 1**: aluno com risco de defasagem futura.
+- **Classe 0**: aluno sem risco de defasagem futura.
+
+### Modelo Utilizado
+Foi utilizado um **LightGBM Classifier**, escolhido por seu bom desempenho em dados tabulares, capacidade de lidar bem com relações não lineares e eficiência em cenários com variáveis numéricas e categóricas tratadas na pipeline.
+
+### Variáveis de Entrada
+O modelo recebe atributos acadêmicos e indicadores do aluno, como por exemplo:
+- `Mat`, `Por`
+- `INDE`, `IAA`, `IEG`, `IPS`, `IDA`, `IPV`, `IAN`
+- `Pedra_0`, `Pedra_1`, `Pedra_2`
+- `Defasagem`
+
+Essas variáveis passam por pré-processamento, padronização e reordenação antes da inferência, para garantir compatibilidade com o modelo treinado.
+
+### Função de Saída
+Na saída da API, o modelo retorna:
+- **`risk_class`**: decisão final do classificador (`0` ou `1`).
+- **`risk_probability`**: probabilidade estimada de o aluno pertencer à classe de risco.
+
+Exemplo de interpretação:
+- `risk_class = 1`: o modelo classificou o aluno como caso de risco.
+- `risk_probability = 0.85`: o modelo estimou 85% de chance de o aluno pertencer ao grupo com risco de defasagem.
+
+### Regra de Decisão
+A probabilidade prevista pode ser convertida em classe com base em um limiar de decisão. Esse limiar pode ser ajustado conforme a estratégia da operação:
+- limiar mais baixo: identifica mais alunos em risco, aumentando sensibilidade;
+- limiar mais alto: reduz alertas indevidos, aumentando seletividade.
+
+### Como Avaliar o Modelo
+As métricas principais de avaliação são `recall`, `precision` e `F1-score`.
+
+- **Recall**: mais importante quando a intervenção é barata, escalável e o principal risco é deixar um aluno vulnerável sem acompanhamento. Nesse cenário, é aceitável convocar alguns alunos sem necessidade real para não perder casos importantes.
+- **Precision**: mais importante quando a intervenção exige recursos escassos, como atendimento especializado, reforço individual intensivo ou acompanhamento com equipe limitada. Nesse caso, falsos positivos têm custo operacional alto.
+- **F1-score**: mais interessante quando o projeto precisa equilibrar os dois lados, isto é, capturar boa parte dos alunos em risco sem sobrecarregar a operação com alertas em excesso.
+
+### Interpretação de Negócio
+O modelo não substitui a decisão pedagógica. Ele funciona como mecanismo de priorização, ajudando a equipe a identificar alunos com maior probabilidade de precisar de intervenção antecipada.
+
+## 3. Estrutura do Projeto
 
 ```
 FIAP---Tech-Challenge-Fase-4/
@@ -108,7 +152,7 @@ FIAP---Tech-Challenge-Fase-4/
     └── integration/
 ```
 
-## 3. Instruções de Deploy
+## 4. Instruções de Deploy
 
 ### Pré-requisitos
 - Python 3.10 ou superior
@@ -119,13 +163,33 @@ FIAP---Tech-Challenge-Fase-4/
 Para a API:
 ```bash
 cd api
-pip install -e .
+uv sync
+source .venv/bin/activate  # Linux/Mac
+python dev_pipeline.py
+```
+No Windows:
+```bash
+cd api
+uv sync
+.venv\Scripts\activate
+python main.py
 ```
 
 Para a pipeline ML:
 ```bash
 cd pipeline_ml
 uv sync
+source .venv/bin/activate  # Linux/Mac
+cd src
+python dev_pipeline.py
+```
+No Windows:
+```bash
+cd pipeline_ml
+uv sync
+.venv\Scripts\activate
+cd src
+python dev_pipeline.py
 ```
 
 ### Comandos para Treinar, Validar e Testar o Modelo
@@ -158,7 +222,7 @@ uv sync
 - **Heroku**: Use o Dockerfile para build e deploy.
 - **AWS/GCP**: Use ECS/EKS ou Cloud Run com o docker-compose.yml como base.
 
-## 4. Exemplos de Chamadas à API
+## 5. Exemplos de Chamadas à API
 
 ### Via cURL
 ```bash
@@ -222,7 +286,7 @@ print(response.json())
 - Body: raw JSON com o exemplo acima
 - Headers: Content-Type: application/json
 
-## 5. Etapas do Pipeline de Machine Learning
+## 6. Etapas do Pipeline de Machine Learning
 
 1. **Pré-processamento**:
    - Padronização de nomes de colunas (remoção de sufixos .1/.2, aliases).
@@ -245,6 +309,10 @@ print(response.json())
    - Remoção de colunas constantes e leakage.
    - Modelo: LightGBM Classifier com hiperparâmetros otimizados.
    - Métricas: accuracy, F1-score, precision, recall, classification report.
+   - Leitura de negócio das métricas:
+     - **Recall**: mais importante quando a intervenção é barata, escalável e o principal risco é deixar um aluno vulnerável sem acompanhamento. Nesse cenário, vale aceitar mais falsos positivos para capturar o maior número possível de casos reais.
+     - **Precision**: mais importante quando a intervenção é cara ou limitada, por exemplo quando exige horas de especialistas, reforço individual, avaliação psicopedagógica ou vagas restritas em programas de apoio. Nesse caso, falsos positivos consomem recursos escassos e desviam atenção de quem mais precisa.
+     - **F1-score**: mais interessante quando é necessário equilibrar recall e precision, especialmente em um cenário intermediário no qual a intervenção tem custo relevante, mas ainda é importante não perder muitos alunos de risco.
 
 4. **Seleção de Modelo**:
    - Modelo único: LightGBM binário para classificação de risco.
@@ -263,31 +331,36 @@ print(response.json())
    cd FIAP---Tech-Challenge-Fase-4
    ```
 
-2. **Configurar ambiente**:
-   ```bash
-   # Recomendado: usar uv para gerenciamento de dependências
-   uv sync  # para pipeline_ml
-   cd api && uv sync  # para api, se aplicável
-   ```
-   Ou manualmente:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Linux/Mac
-   # ou .venv\Scripts\activate no Windows
-   pip install -e .  # instalar via pyproject.toml
-   ```
-
-3. **Executar pipeline de ML**:
+2. **Executar o pipeline de ML**:
    ```bash
    cd pipeline_ml
+   uv sync
+   source .venv/bin/activate  # Linux/Mac
+   python train.py
+   ```
+   No Windows:
+   ```bash
+   cd pipeline_ml
+   uv sync
+   .venv\Scripts\activate
    python train.py
    ```
 
-4. **Executar API**:
+3. **Executar a API**:
    ```bash
    cd api
+   uv sync
+   source .venv/bin/activate  # Linux/Mac
    python -m uvicorn src.main:app --reload
    ```
+   No Windows:
+   ```bash
+   cd api
+   uv sync
+   .venv\Scripts\activate
+   python -m uvicorn src.main:app --reload
+   ```
+   A API ficará disponível em `http://localhost:8000`.
 
 ### Como Testar o Código
 O projeto utiliza pytest para testes unitários e pytest-cov para medição de cobertura.
